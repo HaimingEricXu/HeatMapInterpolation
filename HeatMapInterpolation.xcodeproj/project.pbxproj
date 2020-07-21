@@ -15,6 +15,7 @@
 		3A34A0AE24C78D6C001DA955 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3A34A0AC24C78D6C001DA955 /* LaunchScreen.storyboard */; };
 		3A34A0B924C78D6C001DA955 /* HeatMapInterpolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A34A0B824C78D6C001DA955 /* HeatMapInterpolationTests.swift */; };
 		3A34A0C424C78D6C001DA955 /* HeatMapInterpolationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A34A0C324C78D6C001DA955 /* HeatMapInterpolationUITests.swift */; };
+		D9F112DD8794B96E9EA03DC4 /* Pods_HeatMapInterpolation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 96284F627DA892A6FCA92E48 /* Pods_HeatMapInterpolation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +36,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		06F98C651BD9F2719A4C12F4 /* Pods-HeatMapInterpolation.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HeatMapInterpolation.debug.xcconfig"; path = "Target Support Files/Pods-HeatMapInterpolation/Pods-HeatMapInterpolation.debug.xcconfig"; sourceTree = "<group>"; };
 		3A34A09E24C78D6B001DA955 /* HeatMapInterpolation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HeatMapInterpolation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A34A0A124C78D6B001DA955 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3A34A0A324C78D6B001DA955 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -49,6 +51,8 @@
 		3A34A0BF24C78D6C001DA955 /* HeatMapInterpolationUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HeatMapInterpolationUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A34A0C324C78D6C001DA955 /* HeatMapInterpolationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeatMapInterpolationUITests.swift; sourceTree = "<group>"; };
 		3A34A0C524C78D6C001DA955 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4216D335374816BC6D904FEB /* Pods-HeatMapInterpolation.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HeatMapInterpolation.release.xcconfig"; path = "Target Support Files/Pods-HeatMapInterpolation/Pods-HeatMapInterpolation.release.xcconfig"; sourceTree = "<group>"; };
+		96284F627DA892A6FCA92E48 /* Pods_HeatMapInterpolation.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_HeatMapInterpolation.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D9F112DD8794B96E9EA03DC4 /* Pods_HeatMapInterpolation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +81,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3772C6A0E5492ACCE069F919 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				96284F627DA892A6FCA92E48 /* Pods_HeatMapInterpolation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		3A34A09524C78D6B001DA955 = {
 			isa = PBXGroup;
 			children = (
@@ -83,6 +96,8 @@
 				3A34A0B724C78D6C001DA955 /* HeatMapInterpolationTests */,
 				3A34A0C224C78D6C001DA955 /* HeatMapInterpolationUITests */,
 				3A34A09F24C78D6B001DA955 /* Products */,
+				E327C22492D42B89F3E173A5 /* Pods */,
+				3772C6A0E5492ACCE069F919 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -128,6 +143,16 @@
 			path = HeatMapInterpolationUITests;
 			sourceTree = "<group>";
 		};
+		E327C22492D42B89F3E173A5 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				06F98C651BD9F2719A4C12F4 /* Pods-HeatMapInterpolation.debug.xcconfig */,
+				4216D335374816BC6D904FEB /* Pods-HeatMapInterpolation.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -135,9 +160,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3A34A0C824C78D6C001DA955 /* Build configuration list for PBXNativeTarget "HeatMapInterpolation" */;
 			buildPhases = (
+				3C0ACCFFAD07DE68DD82E3DE /* [CP] Check Pods Manifest.lock */,
 				3A34A09A24C78D6B001DA955 /* Sources */,
 				3A34A09B24C78D6B001DA955 /* Frameworks */,
 				3A34A09C24C78D6B001DA955 /* Resources */,
+				CC89930805F4DB89919A7BFB /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -253,6 +280,48 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3C0ACCFFAD07DE68DD82E3DE /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-HeatMapInterpolation-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		CC89930805F4DB89919A7BFB /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HeatMapInterpolation/Pods-HeatMapInterpolation-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-HeatMapInterpolation/Pods-HeatMapInterpolation-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HeatMapInterpolation/Pods-HeatMapInterpolation-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3A34A09A24C78D6B001DA955 /* Sources */ = {
@@ -432,6 +501,7 @@
 		};
 		3A34A0C924C78D6C001DA955 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 06F98C651BD9F2719A4C12F4 /* Pods-HeatMapInterpolation.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
@@ -449,6 +519,7 @@
 		};
 		3A34A0CA24C78D6C001DA955 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 4216D335374816BC6D904FEB /* Pods-HeatMapInterpolation.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
