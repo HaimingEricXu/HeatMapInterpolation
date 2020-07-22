@@ -20,6 +20,7 @@ class ViewController: UIViewController {
     private let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
     
     private var mapView = GMSMapView()
+    private var data = [[Double]]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -42,7 +43,6 @@ class ViewController: UIViewController {
     }
     
     private func executeHeatMap() {
-        var data = [[Double]]()
         do {
             guard let path = Bundle.main.url(forResource: "dataset", withExtension: "json") else {
                 print("Data set path error")
@@ -59,6 +59,7 @@ class ViewController: UIViewController {
                 // retrieved via item like a dictionary
                 let lat: Double = item["lat"] as? CLLocationDegrees ?? 0.0
                 let lng: Double = item["lng"] as? CLLocationDegrees ?? 0.0
+                append(lat: lat, long: lng)
                 
                 // Creates a weighted coordinate for that lat and long; a weighted coordinate is
                 // how the heatmap gets different colors
@@ -71,6 +72,8 @@ class ViewController: UIViewController {
         } catch {
             print(error.localizedDescription)
         }
+        let interpolationController = HeatMapInterpolationPoints(dataset: data, n: 16)
+        heatMapPoints.append(contentsOf: interpolationController.interpolate())
         heatMapLayer.weightedData = heatMapPoints
         heatMapLayer.map = mapView
         heatMapLayer.gradient = GMUGradient(
@@ -78,6 +81,19 @@ class ViewController: UIViewController {
             startPoints: gradientStartheatMapPoints,
             colorMapSize: 256
         )
+    }
+    
+    private func append(lat: Double, long: Double) {
+        var index: Int = 0
+        for key in data {
+            if key[0] == lat && key[1] == long {
+                data[index][2] += 1
+                return
+            }
+            index += 1
+        }
+        let temp: [Double] = [lat, long, 1]
+        data.append(temp)
     }
 }
 
