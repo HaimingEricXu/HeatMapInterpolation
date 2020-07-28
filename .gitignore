@@ -19,3 +19,4 @@ Pods/
 Podfile.lock
 Carthage/
 HeatMapInterpolation.xcodeproj/xcuserdata/haiming.xcuserdatad/xcschemes/xcschememanagement.plist
+dataset.json
