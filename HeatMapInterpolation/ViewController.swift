@@ -30,8 +30,11 @@ class ViewController: UIViewController {
     private var data = [[Double]]()
     private var markers = [GMSMarker]()
     private var rendering = false
+    private let interpolationController = HeatMapInterpolationPoints()
+
     
     @IBOutlet weak var renderButton: UIButton!
+    @IBOutlet weak var defaultRender: UIButton!
     
     private let alert = UIAlertController(
         title: "Render",
@@ -45,6 +48,7 @@ class ViewController: UIViewController {
         mapView = GMSMapView.map(withFrame: self.view.frame, camera: camera)
         view.addSubview(mapView)
         view.bringSubviewToFront(renderButton)
+        view.bringSubviewToFront(defaultRender)
         alert.addTextField { (textField) in
             textField.text = ""
         }
@@ -52,26 +56,6 @@ class ViewController: UIViewController {
             // Force unwrapping is okay here because there has to be a text field (created above)
             self.executeHeatMap(nVal: Float(alert?.textFields![0].text ?? "0.0") ?? 0.0)
         }))
-    }
-    
-    @IBAction func startRender(_ sender: Any) {
-        self.present(alert, animated: true, completion: nil)
-    }
-    
-    /// sync into background thread
-    /// use a function with callback
-    private func executeHeatMap(nVal: Float) {
-        DispatchQueue.main.async {
-            let activityView = UIActivityIndicatorView(style: .whiteLarge)
-            activityView.center = self.view.center
-            self.view.addSubview(activityView)
-            self.view.bringSubviewToFront(activityView)
-            activityView.startAnimating()
-        }
-        // is the rest of this on background thread?
-        heatMapPoints.removeAll()
-        heatMapLayer.weightedData = heatMapPoints
-        heatMapLayer.map = nil
         do {
             guard let path = Bundle.main.url(forResource: "dataset", withExtension: "json") else {
                 print("Data set path error")
@@ -86,7 +70,6 @@ class ViewController: UIViewController {
             for item in object {
                 let lat: Double = item["lat"] as? CLLocationDegrees ?? 0.0
                 let lng: Double = item["lng"] as? CLLocationDegrees ?? 0.0
-                append(lat: lat, long: lng)
                 let marker = GMSMarker()
                 marker.position = CLLocationCoordinate2D(latitude: lat, longitude: lng)
                 markers.append(marker)
@@ -97,6 +80,21 @@ class ViewController: UIViewController {
         } catch {
             print(error.localizedDescription)
         }
+    }
+    
+    @IBAction func startRender(_ sender: Any) {
+        self.present(alert, animated: true, completion: nil)
+    }
+    
+    @IBAction func startDefaultRender(_ sender: Any) {
+        executeHeatMap(nVal: 2.5)
+    }
+
+    private func executeHeatMap(nVal: Float) {
+        interpolationController.setData(file: "dataset")
+        heatMapPoints.removeAll()
+        heatMapLayer.weightedData = heatMapPoints
+        heatMapLayer.map = nil
         for point in data {
             let coords = GMUWeightedLatLng(
                 coordinate: CLLocationCoordinate2DMake(point[0], point[1]),
@@ -104,28 +102,7 @@ class ViewController: UIViewController {
             )
             heatMapPoints.append(coords)
         }
-        let interpolationController = HeatMapInterpolationPoints(dataset: data, n: Double(nVal))
-        heatMapPoints.append(contentsOf: interpolationController.interpolate())
-        heatMapLayer.weightedData = heatMapPoints
-        heatMapLayer.map = mapView
-        heatMapLayer.gradient = GMUGradient(
-            colors: gradientColors,
-            startPoints: gradientStartheatMapPoints,
-            colorMapSize: 256
-        )
-    }
-    
-    private func append(lat: Double, long: Double) {
-        var index: Int = 0
-        for key in data {
-            if key[0] == lat && key[1] == long {
-                data[index][2] += 1
-                return
-            }
-            index += 1
-        }
-        let temp: [Double] = [lat, long, 1]
-        data.append(temp)
+        interpolationController.generateHeatMaps(mapView: mapView, n: Double(nVal))
     }
 }
 
@@ -133,7 +110,6 @@ extension UITextField {
     var floatValue : Float {
         let numberFormatter = NumberFormatter()
         numberFormatter.numberStyle = .decimal
-
         let nsNumber = numberFormatter.number(from: text!)
         return nsNumber == nil ? 0.0 : nsNumber!.floatValue
     }

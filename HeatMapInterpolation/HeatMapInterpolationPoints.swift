@@ -18,58 +18,287 @@ import GooglePlaces
 import GoogleMaps
 import GoogleMapsUtils
 
+/// This class will create artificial points in surrounding locations with appropriate intensities interpolated by neighboring intensity values.
 class HeatMapInterpolationPoints {
     
-    private var data: [[Double]]
-    private var nVal: Double
-    private let minLat: Int = -900
-    private let minLong: Int = -1800
-    private let maxLat: Int = 900
-    private let maxLong: Int = 1800
-    private var newPoints = [GMUWeightedLatLng]()
+    /// The input data set; each entry contains the coordinates and the 
+    private var data = [[Double]]()
+    private var heatMaps = [GMUHeatmapTileLayer]()
     
-    private let distanceScale: Double = 0 /// Should make the distanceWeights to be as close to 1 as possible
-    
-    init(dataset: [[Double]], n: Double) {
-        data = dataset
-        nVal = n
+    /// Takes in the data set file and calculates the weights of the given points; these values are used for interpolation later
+    ///
+    /// - Parameter file: The input data set file; it must have a json extension.
+    public func setData(file: String) {
+        do {
+            guard let path = Bundle.main.url(forResource: file, withExtension: "json") else {
+                print("Data set path error")
+                return
+            }
+            let data = try Data(contentsOf: path)
+            let json = try JSONSerialization.jsonObject(with: data, options: [])
+            guard let object = json as? [[String: Any]] else {
+                print("Could not read the JSON file or file is empty")
+                return
+            }
+            for item in object {
+                let lat: Double = item["lat"] as? CLLocationDegrees ?? 0.0
+                let lng: Double = item["lng"] as? CLLocationDegrees ?? 0.0
+                append(lat: lat, long: lng)
+            }
+        } catch {
+            print(error.localizedDescription)
+        }
     }
     
+    /// A helper function that adds a given set of coordinates to the list of points or increments an existing coordinate
+    ///
+    /// - Parameters:
+    ///   - lat: The latitude value of the new point.
+    ///   - long: The longitude value of the new point.
+    private func append(lat: Double, long: Double) {
+        var index: Int = 0
+        for key in data {
+            if key[0] == lat && key[1] == long {
+                data[index][2] += 1
+                return
+            }
+            index += 1
+        }
+        let temp: [Double] = [lat, long, 1]
+        data.append(temp)
+    }
+        
+    /// A helper function that calculates the straight-line distance between two coordinates
+    ///
+    /// - Parameters:
+    ///   - lat1: The latitude value of the first point.
+    ///   - long1: The longitude value of the second point.
+    ///   - lat2: The latitude value of the second point.
+    ///   - long2: The longitude value of the second point.
+    /// - Returns: A double value representing the distance between the given points.
     private func distance(lat1: Double, long1: Double, lat2: Double, long2: Double) -> Double {
         return sqrt(pow(abs(lat2 - lat1), 2) + pow(abs(long2 - long1), 2))
     }
     
-    public func interpolate() -> [GMUWeightedLatLng] {
-        for i in minLat...maxLat {
-            for j in minLong...maxLong {
-                let realLat: Double = Double(i) / 10
-                let realLong: Double = Double(j) / 10
-                var numerator: Double = 0
-                var denominator: Double = 0
-                for point in data {
-                    let dist = distance(
-                        lat1: realLat,
-                        long1: realLong,
-                        lat2: point[0],
-                        long2: point[1]
+    /// A helper function that utilizes the k-cluster algorihtm to cluster the input data points together into reasonable sets; the number of
+    /// clusters is set so that the maximum distance between the center and any point is less than a set constant value
+    ///
+    /// - Returns: A list of clusters, each of which is a list of CLLocationCoordinate2D objects.
+    private func kcluster() -> [[CLLocationCoordinate2D]] {
+        
+        // Centers contain double values representing the center of their respective clusters found
+        // in the clusters list
+        var centers = [CLLocationCoordinate2D]()
+        var clusters = [[CLLocationCoordinate2D]]()
+        
+        // Try to make as few clusters as possible; start with 1 and increment as needed
+        var numClusters = 1
+        if (data[0].count > 0) {
+            
+            // We need to keep on finding clusters until the maximum distance between the center
+            // and any point in its cluster is under a specific preset value
+            while true {
+                
+                // Set the first numClusters values in data set to be the initial cluster centers
+                for i in 0...numClusters - 1 {
+                    centers.append(CLLocationCoordinate2D(
+                        latitude: data[i][0],
+                        longitude: data[i][1])
                     )
-                    let distanceWeight = pow(dist, Double(nVal))
-                    if distanceWeight == 0 {
-                        continue
+                    let tempArray = [CLLocationCoordinate2D]()
+                    clusters.append(tempArray)
+                }
+                
+                // 25 iterations of updating the center and recalculating the points in that cluster
+                // should be adequet, as k-means clustering has diminishing returns as the number of
+                // iterations increases
+                for _ in 0...24 {
+                    
+                    // Reset the clusters so that it can be updated
+                    for i in 0...numClusters - 1 {
+                        clusters[i].removeAll()
                     }
-                    numerator += (point[2] / distanceWeight)
-                    denominator += (1 / distanceWeight)
+                    
+                    // Finds the appropriate cluster for each data point
+                    for point in data {
+                        var minDistance: Double = distance(
+                            lat1: point[0],
+                            long1: point[1],
+                            lat2: centers[0].latitude,
+                            long2: centers[0].longitude
+                        )
+                        var index: Int = 0
+                        for i in 0...centers.endIndex - 1 {
+                            let tempDistance: Double = distance(
+                                lat1: point[0],
+                                long1: point[1],
+                                lat2: centers[i].latitude,
+                                long2: centers[i].longitude
+                            )
+                            if (minDistance > tempDistance) {
+                                minDistance = tempDistance
+                                index = i
+                            }
+                        }
+                        clusters[index].append(CLLocationCoordinate2D(
+                            latitude: point[0],
+                            longitude: point[1])
+                        )
+                    }
+                    
+                    // Update the center values to reflect new cluster points
+                    centers.removeAll()
+                    for cluster in clusters {
+                        var newCenterLat: Double = 0
+                        var newCenterLong: Double = 0
+                        for p in cluster {
+                            newCenterLat += p.latitude
+                            newCenterLong += p.longitude
+                        }
+                        centers.append(CLLocationCoordinate2D(
+                            latitude: newCenterLat / Double(cluster.count),
+                            longitude: newCenterLong / Double(cluster.count))
+                        )
+                    }
                 }
-                if denominator == 0 || numerator < 3 {
-                    continue
+                
+                // Test if we can stop increasing the number of clusters
+                var breaker = false
+                for i in 0...numClusters - 1 {
+                    for coord in clusters[i] {
+                        let straightLine = distance(
+                            lat1: centers[i].latitude,
+                            long1: centers[i].longitude,
+                            lat2: coord.latitude,
+                            long2: coord.longitude
+                        )
+                        
+                        // If there is a point that is >= 50 away from the center, it implies our
+                        // cluster ranges are too big, so increase the number of clusters and go
+                        // again
+                        if (straightLine > 50) {
+                            breaker = true
+                            break
+                        }
+                    }
+                    if breaker {
+                        break
+                    }
                 }
-                let coords = GMUWeightedLatLng(
-                    coordinate: CLLocationCoordinate2DMake(realLat, realLong),
-                    intensity: Float(numerator / denominator)
-                )
-                newPoints.append(coords)
+                if !breaker {
+                    break
+                }
+                for i in 0...numClusters - 1 {
+                    clusters[i].removeAll()
+                }
+                numClusters += 1
             }
         }
-        return newPoints
+        return clusters
+    }
+    
+    /// A helper function that finds the minimum and maximum longitude and latitude values
+    ///
+    /// - Parameter input: A list of points that are in a cluster.
+    /// - Returns: A list of four integers representing the minimum and maximum longitude and latitude values
+    private func findBounds(input: [CLLocationCoordinate2D]) -> [Int] {
+        
+        // Initialize the boundary values to something that must be updated immediately
+        var ans = [0x7fffffff, 0x7fffffff, -0x7fffffff, -0x7fffffff]
+        for coord in input {
+            ans[0] = min(ans[0], Int(coord.latitude * 10))
+            ans[1] = min(ans[1], Int(coord.longitude * 10))
+            ans[2] = max(ans[2], Int(coord.latitude * 10))
+            ans[3] = max(ans[3], Int(coord.longitude * 10))
+        }
+        return ans
+    }
+    
+    /// Generates several heat maps based on the clusters with points not found in the data set interpolated by the inverse distance
+    /// means interpolation algorithm and displays the heat maps on the given map
+    ///
+    /// - Parameters:
+    ///   - mapView: The map that we want to display the heat maps on.
+    ///   - n: The n-value, determining the range of influence the intensities found in the given data set has.
+    public func generateHeatMaps(mapView: GMSMapView, n: Double) {
+        
+        // Clearing the heat maps calculated previously to reduce clutter
+        for heatMap in heatMaps {
+            heatMap.map = nil
+            heatMap.weightedData = []
+        }
+        heatMaps.removeAll()
+        
+        // Clusters is a list of clusters
+        let clusters = kcluster()
+        
+        // We make a new heat map per cluster
+        for cluster in clusters {
+            let heatMapLayer: GMUHeatmapTileLayer = GMUHeatmapTileLayer()
+            var heatMapPoints = [GMUWeightedLatLng]()
+            let gradientColors = [UIColor.green, UIColor.red]
+            let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
+            let bounds = findBounds(input: cluster)
+            
+            // A small n-value implies a large range of points that could be potentially be
+            // affected, so it makes sense to increase the stride to improve runtime and the range
+            // to improve the quality of the heat map
+            let step = n < 2 ? 4 : 3
+            let offset = n < 2 ? 400 : 100
+            
+            // Search all the points between the bounds of the cluster; the offset indicates how
+            // far beyond the bounds we want to query
+            for i in stride(from: bounds[0] - offset, to: bounds[2] + offset, by: step) {
+                if i > 900 || i < -900 {
+                    break
+                }
+                for j in stride(from: bounds[1] - offset, to: bounds[3] + offset, by: step) {
+                    if j > 1800 || j < -1800 {
+                        break
+                    }
+                    let realLat: Double = Double(i) / 10
+                    let realLong: Double = Double(j) / 10
+                    var numerator: Double = 0
+                    var denominator: Double = 0
+                    for point in data {
+                        let dist = distance(
+                            lat1: realLat,
+                            long1: realLong,
+                            lat2: point[0],
+                            long2: point[1]
+                        )
+                        let distanceWeight = pow(dist, Double(n))
+                        if distanceWeight == 0 {
+                            continue
+                        }
+                        numerator += (point[2] / distanceWeight)
+                        denominator += (1 / distanceWeight)
+                    }
+                    
+                    // If the numerator value is too small, that point is worthless as it is too
+                    // far away or too weak; if the denominator is 0, we get a divide by 0 error
+                    if denominator == 0 || numerator < 3 {
+                        continue
+                    }
+                    
+                    // Set the intensity based on IDW
+                    let coords = GMUWeightedLatLng(
+                        coordinate: CLLocationCoordinate2DMake(realLat, realLong),
+                        intensity: Float(numerator / denominator)
+                    )
+                    heatMapPoints.append(coords)
+                }
+            }
+            
+            // Display the cluster's heat map on the map
+            heatMapLayer.weightedData = heatMapPoints
+            heatMapLayer.gradient = GMUGradient(
+                colors: gradientColors,
+                startPoints: gradientStartheatMapPoints,
+                colorMapSize: 256
+            )
+            heatMapLayer.map = mapView
+            heatMaps.append(heatMapLayer)
+        }
     }
 }
