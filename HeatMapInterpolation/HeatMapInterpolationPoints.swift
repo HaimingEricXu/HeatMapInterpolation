@@ -229,7 +229,7 @@ class HeatMapInterpolationPoints {
         }
         heatMaps.removeAll()
         
-        // Clusters is a list of clusters
+        // Clusters is the list of clusters that we intend to return
         let clusters = kcluster()
         
         // We make a new heat map per cluster
