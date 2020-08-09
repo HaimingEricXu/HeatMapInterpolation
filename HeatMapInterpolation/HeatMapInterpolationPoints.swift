@@ -29,6 +29,7 @@ class HeatMapInterpolationPoints {
     ///
     /// - Parameter file: The input data set file; it must have a json extension.
     public func setData(file: String) {
+        data.removeAll()
         do {
             guard let path = Bundle.main.url(forResource: file, withExtension: "json") else {
                 print("Data set path error")
@@ -56,7 +57,7 @@ class HeatMapInterpolationPoints {
     ///   - lat: The latitude value of the new point.
     ///   - long: The longitude value of the new point.
     private func append(lat: Double, long: Double) {
-        var index: Int = 0
+        var index = 0
         for key in data {
             if key[0] == lat && key[1] == long {
                 data[index][2] += 1
@@ -64,7 +65,7 @@ class HeatMapInterpolationPoints {
             }
             index += 1
         }
-        let temp: [Double] = [lat, long, 1]
+        let temp = [lat, long, 1]
         data.append(temp)
     }
         
@@ -127,7 +128,7 @@ class HeatMapInterpolationPoints {
                             lat2: centers[0].latitude,
                             long2: centers[0].longitude
                         )
-                        var index: Int = 0
+                        var index = 0
                         for i in 0...centers.endIndex - 1 {
                             let tempDistance: Double = distance(
                                 lat1: point[0],
@@ -172,10 +173,10 @@ class HeatMapInterpolationPoints {
                             lat2: coord.latitude,
                             long2: coord.longitude
                         )
-                        
                         // If there is a point that is >= 50 away from the center, it implies our
                         // cluster ranges are too big, so increase the number of clusters and go
-                        // again
+                        // again; this number was set specifically because of the search bounds in
+                        // generateHeatMaps
                         if (straightLine > 50) {
                             breaker = true
                             break
@@ -184,13 +185,13 @@ class HeatMapInterpolationPoints {
                     if breaker {
                         break
                     }
+
                 }
                 if !breaker {
                     break
                 }
-                for i in 0...numClusters - 1 {
-                    clusters[i].removeAll()
-                }
+                clusters.removeAll()
+                centers.removeAll()
                 numClusters += 1
             }
         }
@@ -221,16 +222,16 @@ class HeatMapInterpolationPoints {
     ///   - mapView: The map that we want to display the heat maps on.
     ///   - n: The n-value, determining the range of influence the intensities found in the given data set has.
     public func generateHeatMaps(mapView: GMSMapView, n: Double) {
-        
+
         // Clearing the heat maps calculated previously to reduce clutter
-        for heatMap in heatMaps {
+        for heatMap in self.heatMaps {
             heatMap.map = nil
             heatMap.weightedData = []
         }
-        heatMaps.removeAll()
+        self.heatMaps.removeAll()
         
         // Clusters is the list of clusters that we intend to return
-        let clusters = kcluster()
+        let clusters = self.kcluster()
         
         // We make a new heat map per cluster
         for cluster in clusters {
@@ -238,21 +239,21 @@ class HeatMapInterpolationPoints {
             var heatMapPoints = [GMUWeightedLatLng]()
             let gradientColors = [UIColor.green, UIColor.red]
             let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
-            let bounds = findBounds(input: cluster)
-            
+            let bounds = self.findBounds(input: cluster)
+
             // A small n-value implies a large range of points that could be potentially be
             // affected, so it makes sense to increase the stride to improve runtime and the range
             // to improve the quality of the heat map
-            let step = n < 2 ? 4 : 3
-            let offset = n < 2 ? 400 : 100
+            let step = 3
+            let offset = 100 + max(400 - n * 100, 0)
             
             // Search all the points between the bounds of the cluster; the offset indicates how
             // far beyond the bounds we want to query
-            for i in stride(from: bounds[0] - offset, to: bounds[2] + offset, by: step) {
+            for i in stride(from: bounds[0] - Int(offset), to: bounds[2] + Int(offset), by: step) {
                 if i > 900 || i < -900 {
                     break
                 }
-                for j in stride(from: bounds[1] - offset, to: bounds[3] + offset, by: step) {
+                for j in stride(from: bounds[1] - Int(offset), to: bounds[3] + Int(offset), by: step) {
                     if j > 1800 || j < -1800 {
                         break
                     }
@@ -260,8 +261,8 @@ class HeatMapInterpolationPoints {
                     let realLong: Double = Double(j) / 10
                     var numerator: Double = 0
                     var denominator: Double = 0
-                    for point in data {
-                        let dist = distance(
+                    for point in self.data {
+                        let dist = self.distance(
                             lat1: realLat,
                             long1: realLong,
                             lat2: point[0],
@@ -289,8 +290,6 @@ class HeatMapInterpolationPoints {
                     heatMapPoints.append(coords)
                 }
             }
-            
-            // Display the cluster's heat map on the map
             heatMapLayer.weightedData = heatMapPoints
             heatMapLayer.gradient = GMUGradient(
                 colors: gradientColors,
@@ -298,7 +297,7 @@ class HeatMapInterpolationPoints {
                 colorMapSize: 256
             )
             heatMapLayer.map = mapView
-            heatMaps.append(heatMapLayer)
+            self.heatMaps.append(heatMapLayer)
         }
     }
 }
