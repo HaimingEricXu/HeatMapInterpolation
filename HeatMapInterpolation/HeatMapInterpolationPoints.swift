@@ -198,19 +198,107 @@ class HeatMapInterpolationPoints {
         return clusters
     }
     
-    /// A helper function that finds the minimum and maximum longitude and latitude values
+    /// A helper function that finds the intensity of a given point, represented by realLat and realLong, based on the input data set
+    ///
+    /// - Parameters:
+    ///   - lat: The latitude value of the point.
+    ///   - long: The longitude value of the point.
+    ///   - n: The n-value, determining the range of influence the intensities found in the given data set has.
+    /// - Returns: A list containing just the numerator and denominator
+    private func findIntensity(lat: Double, long: Double, n: Double) -> [Double] {
+        var numerator: Double = 0
+        var denominator: Double = 0
+        for point in self.data {
+            let dist = self.distance(
+                lat1: lat,
+                long1: long,
+                lat2: point[0],
+                long2: point[1]
+            )
+            let distanceWeight = pow(dist, Double(n))
+            if distanceWeight == 0 {
+                continue
+            }
+            numerator += (point[2] / distanceWeight)
+            denominator += (1 / distanceWeight)
+        }
+        return [numerator, denominator]
+    }
+    
+    /// A helper function that finds the minimum and maximum longitude and latitude values that still contains a powerful enough
+    /// intensity that it should be included in the data set
     ///
     /// - Parameter input: A list of points that are in a cluster.
     /// - Returns: A list of four integers representing the minimum and maximum longitude and latitude values
-    private func findBounds(input: [CLLocationCoordinate2D]) -> [Int] {
+    private func findBounds(input: [CLLocationCoordinate2D], n: Double) -> [Int] {
         
         // Initialize the boundary values to something that must be updated immediately
+        // 0: min lat, 1: min long, 2: max lat, 3: max long
         var ans = [0x7fffffff, 0x7fffffff, -0x7fffffff, -0x7fffffff]
         for coord in input {
             ans[0] = min(ans[0], Int(coord.latitude * 10))
             ans[1] = min(ans[1], Int(coord.longitude * 10))
             ans[2] = max(ans[2], Int(coord.latitude * 10))
             ans[3] = max(ans[3], Int(coord.longitude * 10))
+        }
+        
+        // A copy of the answer array is needed since the answer array is directly altered in the
+        // following while loops; the original values need to be retained to calculate
+        let copy = ans
+        
+        // The following while statements find the maximum and minimum lat/long values where the
+        // points are intense enough to be placed in the heat map's data set
+        
+        // Finds the minimum latitude
+        while (ans[0] > -900) {
+            let intensity = findIntensity(
+                lat: Double(ans[0]) / 10,
+                long: Double((ans[3] + ans[1]) / 2) / 10,
+                n: n
+            )
+            if intensity[1] == 0 || intensity[0] < 3 {
+                break
+            }
+            ans[0] -= 3
+        }
+        
+        // Finds the minimum longitude
+        while (ans[1] > -900) {
+            let intensity = findIntensity(
+                lat: Double((copy[2] + copy[0]) / 2) / 10,
+                long: Double(ans[1]) / 10,
+                n: n
+            )
+            if intensity[1] == 0 || intensity[0] < 3 {
+                break
+            }
+            ans[1] -= 3
+        }
+        
+        // Finds the maximum latitude
+        while (ans[2] < 1800) {
+            let intensity = findIntensity(
+                lat: Double(ans[2]) / 10,
+                long: Double((copy[3] + copy[1]) / 2) / 10,
+                n: n
+            )
+            if intensity[1] == 0 || intensity[0] < 3 {
+                break
+            }
+            ans[2] += 3
+        }
+        
+        // Finds the maximum longitude
+        while (ans[3] < 1800) {
+            let intensity = findIntensity(
+                lat: Double((copy[2] + copy[0]) / 2) / 10,
+                long: Double(ans[3]) / 10,
+                n: n
+            )
+            if intensity[1] == 0 || intensity[0] < 3 {
+                break
+            }
+            ans[3] += 3
         }
         return ans
     }
@@ -239,53 +327,41 @@ class HeatMapInterpolationPoints {
             var heatMapPoints = [GMUWeightedLatLng]()
             let gradientColors = [UIColor.green, UIColor.red]
             let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
-            let bounds = self.findBounds(input: cluster)
+            let bounds = self.findBounds(input: cluster, n: n)
 
             // A small n-value implies a large range of points that could be potentially be
             // affected, so it makes sense to increase the stride to improve runtime and the range
             // to improve the quality of the heat map
             let step = 3
-            let offset = 100 + max(400 - n * 100, 0)
             
             // Search all the points between the bounds of the cluster; the offset indicates how
             // far beyond the bounds we want to query
-            for i in stride(from: bounds[0] - Int(offset), to: bounds[2] + Int(offset), by: step) {
+            for i in stride(from: bounds[0], to: bounds[2], by: step) {
                 if i > 900 || i < -900 {
                     break
                 }
-                for j in stride(from: bounds[1] - Int(offset), to: bounds[3] + Int(offset), by: step) {
+                for j in stride(from: bounds[1], to: bounds[3], by: step) {
                     if j > 1800 || j < -1800 {
                         break
                     }
-                    let realLat: Double = Double(i) / 10
-                    let realLong: Double = Double(j) / 10
-                    var numerator: Double = 0
-                    var denominator: Double = 0
-                    for point in self.data {
-                        let dist = self.distance(
-                            lat1: realLat,
-                            long1: realLong,
-                            lat2: point[0],
-                            long2: point[1]
-                        )
-                        let distanceWeight = pow(dist, Double(n))
-                        if distanceWeight == 0 {
-                            continue
-                        }
-                        numerator += (point[2] / distanceWeight)
-                        denominator += (1 / distanceWeight)
-                    }
+                    
+                    // The variable, intensity, contains the numerator and denominator
+                    let intensity = findIntensity(
+                        lat: Double(i) / 10,
+                        long: Double(j) / 10,
+                        n: n
+                    )
                     
                     // If the numerator value is too small, that point is worthless as it is too
                     // far away or too weak; if the denominator is 0, we get a divide by 0 error
-                    if denominator == 0 || numerator < 3 {
+                    if intensity[1] == 0 || intensity[0] < 3 {
                         continue
                     }
                     
                     // Set the intensity based on IDW
                     let coords = GMUWeightedLatLng(
-                        coordinate: CLLocationCoordinate2DMake(realLat, realLong),
-                        intensity: Float(numerator / denominator)
+                        coordinate: CLLocationCoordinate2DMake(Double(i) / 10, Double(j) / 10),
+                        intensity: Float(intensity[0] / intensity[1])
                     )
                     heatMapPoints.append(coords)
                 }
