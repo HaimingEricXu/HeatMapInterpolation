@@ -23,7 +23,8 @@ class HeatMapInterpolationPoints {
     
     /// The input data set; each entry contains the coordinates and the 
     private var data = [[Double]]()
-    private var heatMaps = [GMUHeatmapTileLayer]()
+    
+    private let heatMapLayer: GMUHeatmapTileLayer = GMUHeatmapTileLayer()
     
     /// Takes in the data set file and calculates the weights of the given points; these values are used for interpolation later
     ///
@@ -173,6 +174,7 @@ class HeatMapInterpolationPoints {
                             lat2: coord.latitude,
                             long2: coord.longitude
                         )
+                        
                         // If there is a point that is >= 50 away from the center, it implies our
                         // cluster ranges are too big, so increase the number of clusters and go
                         // again; this number was set specifically because of the search bounds in
@@ -256,10 +258,10 @@ class HeatMapInterpolationPoints {
                 long: Double((ans[3] + ans[1]) / 2) / 10,
                 n: n
             )
-            if intensity[1] == 0 || intensity[0] < 3 {
+            if intensity[1] == 0 || intensity[0] < 4 {
                 break
             }
-            ans[0] -= 3
+            ans[0] -= 1
         }
         
         // Finds the minimum longitude
@@ -269,10 +271,10 @@ class HeatMapInterpolationPoints {
                 long: Double(ans[1]) / 10,
                 n: n
             )
-            if intensity[1] == 0 || intensity[0] < 3 {
+            if intensity[1] == 0 || intensity[0] < 4 {
                 break
             }
-            ans[1] -= 3
+            ans[1] -= 1
         }
         
         // Finds the maximum latitude
@@ -282,23 +284,23 @@ class HeatMapInterpolationPoints {
                 long: Double((copy[3] + copy[1]) / 2) / 10,
                 n: n
             )
-            if intensity[1] == 0 || intensity[0] < 3 {
+            if intensity[1] == 0 || intensity[0] < 4 {
                 break
             }
-            ans[2] += 3
+            ans[2] += 1
         }
         
         // Finds the maximum longitude
-        while (ans[3] < 1800) {
+        while ans[3] < 1800 {
             let intensity = findIntensity(
                 lat: Double((copy[2] + copy[0]) / 2) / 10,
                 long: Double(ans[3]) / 10,
                 n: n
             )
-            if intensity[1] == 0 || intensity[0] < 3 {
+            if intensity[1] == 0 || intensity[0] < 2 {
                 break
             }
-            ans[3] += 3
+            ans[3] += 1
         }
         return ans
     }
@@ -310,24 +312,16 @@ class HeatMapInterpolationPoints {
     ///   - mapView: The map that we want to display the heat maps on.
     ///   - n: The n-value, determining the range of influence the intensities found in the given data set has.
     public func generateHeatMaps(mapView: GMSMapView, n: Double) {
-
-        // Clearing the heat maps calculated previously to reduce clutter
-        for heatMap in self.heatMaps {
-            heatMap.map = nil
-            heatMap.weightedData = []
-        }
-        self.heatMaps.removeAll()
+        heatMapLayer.map = nil
         
         // Clusters is the list of clusters that we intend to return
-        let clusters = self.kcluster()
-        
-        // We make a new heat map per cluster
+        let clusters = kcluster()
+        var heatMapPoints = [GMUWeightedLatLng]()
+        let gradientColors = [UIColor.green, UIColor.red]
+        let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
+
         for cluster in clusters {
-            let heatMapLayer: GMUHeatmapTileLayer = GMUHeatmapTileLayer()
-            var heatMapPoints = [GMUWeightedLatLng]()
-            let gradientColors = [UIColor.green, UIColor.red]
-            let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
-            let bounds = self.findBounds(input: cluster, n: n)
+            let bounds = findBounds(input: cluster, n: n)
 
             // A small n-value implies a large range of points that could be potentially be
             // affected, so it makes sense to increase the stride to improve runtime and the range
@@ -366,14 +360,13 @@ class HeatMapInterpolationPoints {
                     heatMapPoints.append(coords)
                 }
             }
-            heatMapLayer.weightedData = heatMapPoints
-            heatMapLayer.gradient = GMUGradient(
-                colors: gradientColors,
-                startPoints: gradientStartheatMapPoints,
-                colorMapSize: 256
-            )
-            heatMapLayer.map = mapView
-            self.heatMaps.append(heatMapLayer)
         }
+        heatMapLayer.weightedData = heatMapPoints
+        heatMapLayer.gradient = GMUGradient(
+            colors: gradientColors,
+            startPoints: gradientStartheatMapPoints,
+            colorMapSize: 256
+        )
+        heatMapLayer.map = mapView
     }
 }
