@@ -41,8 +41,7 @@ class HeatMapInterpolationPoints {
     private let normalLat = 175.9783070993
     private let normalLong = 180.0
     
-    
-    /// The constructor to the class
+    /// The constructor to this class
     ///
     /// - Parameter givenClusterIterations: The number of iterations k-means clustering should go to.
     init(givenClusterIterations: Int = 25) {
@@ -81,7 +80,14 @@ class HeatMapInterpolationPoints {
     ///   - long2: The longitude value of the second point.
     /// - Returns: A double value representing the distance between the given points.
     private func distance(lat1: Double, long1: Double, lat2: Double, long2: Double) -> Double {
-        return sqrt(pow(abs(lat2 - lat1), 2) + pow(abs(long2 - long1), 2))
+        
+        // The normalizing factor scales down the spherical distance to a value that is more
+        // consistent with the parameters of the formulas
+        let normalizingFactor = 111195.0837241998
+        return GMSGeometryDistance(
+            CLLocationCoordinate2D(latitude: lat1, longitude: long1),
+            CLLocationCoordinate2D(latitude: lat2, longitude: long2)
+        ) / normalizingFactor
     }
     
     /// A helper function that utilizes the k-cluster algorithm to cluster the input data points together into reasonable sets; the number of
@@ -116,7 +122,7 @@ class HeatMapInterpolationPoints {
                 // 25 iterations of updating the center and recalculating the points in that cluster
                 // should be adequet, as k-means clustering has diminishing returns as the number of
                 // iterations increases
-                for _ in 0...24 {
+                for _ in 0...clusterIterations {
                     
                     // Reset the clusters so that it can be updated
                     for i in 0...numClusters - 1 {
@@ -248,65 +254,6 @@ class HeatMapInterpolationPoints {
             ans[2] = max(ans[2], Int(coord.latitude * 10))
             ans[3] = max(ans[3], Int(coord.longitude * 10))
         }
-        // A copy of the answer array is needed since the answer array is directly altered in the
-        // following while loops; the original values need to be retained to calculate
-        let copy = ans
-        // The following while statements find the maximum and minimum lat/long values where the
-        // points are intense enough to be placed in the heat map's data set
-        
-        // Finds the minimum latitude
-        /*while (ans[0] > -900) {
-            let intensity = findIntensity(
-                lat: Double(ans[0]) / 10,
-                long: Double((ans[3] + ans[1]) / 2) / 10,
-                n: n
-            )
-            if intensity[1] == 0 || intensity[0] < 4 {
-                break
-            }
-            ans[0] -= 1
-        }
-        print("---------------------")
-        // Finds the minimum longitude
-        while (ans[1] > -1800) {
-            let intensity = findIntensity(
-                lat: Double((copy[2] + copy[0]) / 2) / 10,
-                long: Double(ans[1]) / 10,
-                n: n
-            )
-            print(intensity[0])
-            if intensity[1] == 0 || intensity[0] < 4 {
-                break
-            }
-            ans[1] -= 1
-        }
-        print("---------------------")
-        
-        // Finds the maximum latitude
-        while (ans[2] < 900) {
-            let intensity = findIntensity(
-                lat: Double(ans[2]) / 10,
-                long: Double((copy[3] + copy[1]) / 2) / 10,
-                n: n
-            )
-            if intensity[1] == 0 || intensity[0] < 4 {
-                break
-            }
-            ans[2] += 1
-        }
-        
-        // Finds the maximum longitude
-        while ans[3] < 1800 {
-            let intensity = findIntensity(
-                lat: Double((copy[2] + copy[0]) / 2) / 10,
-                long: Double(ans[3]) / 10,
-                n: n
-            )
-            if intensity[1] == 0 || intensity[0] < 4 {
-                break
-            }
-            ans[3] += 1
-        }*/
         return ans
     }
     
@@ -337,13 +284,25 @@ class HeatMapInterpolationPoints {
             // to improve the quality of the heat map
             let step = 2
             
+            // These two values bound the search range of the heat map; any larger range provides
+            // marginal improvements, if any, in the resulting heat map, as found via trial and
+            // error and testing with various data sets
+            let latRange = 150
+            let longRange = 200
+            
             // Search all the points between the bounds of the cluster; the offset indicates how
             // far beyond the bounds we want to query
-            for i in stride(from: bounds[0] - 150, to: bounds[2] + 150, by: step) {
+            for i in stride(from: bounds[0] - latRange, to: bounds[2] + latRange, by: step) {
+                
+                // Since latitude ranges from -90 to 90 and the granularity is 0.1, we can move from
+                // -900 to 900
                 if i > 900 || i < -900 {
                     break
                 }
-                for j in stride(from: bounds[1] - 200, to: bounds[3] + 200, by: step) {
+                for j in stride(from: bounds[1] - longRange, to: bounds[3] + longRange, by: step) {
+                    
+                    // Since longitude ranges from -180 to 180 and the granularity is 0.1, we can
+                    // move from -1800 to 1800
                     if j > 1800 || j < -1800 {
                         break
                     }

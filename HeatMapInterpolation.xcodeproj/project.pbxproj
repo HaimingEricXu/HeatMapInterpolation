@@ -11,7 +11,7 @@
 		3A140AE724C7922300F2CB74 /* dataset.json in Resources */ = {isa = PBXBuildFile; fileRef = 3A140AE624C7922300F2CB74 /* dataset.json */; };
 		3A34A0A224C78D6B001DA955 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A34A0A124C78D6B001DA955 /* AppDelegate.swift */; };
 		3A34A0A424C78D6B001DA955 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A34A0A324C78D6B001DA955 /* SceneDelegate.swift */; };
-		3A34A0A624C78D6B001DA955 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A34A0A524C78D6B001DA955 /* ViewController.swift */; };
+		3A34A0A624C78D6B001DA955 /* HeatMapInterpolationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A34A0A524C78D6B001DA955 /* HeatMapInterpolationViewController.swift */; };
 		3A34A0A924C78D6B001DA955 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3A34A0A724C78D6B001DA955 /* Main.storyboard */; };
 		3A34A0AB24C78D6C001DA955 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3A34A0AA24C78D6C001DA955 /* Assets.xcassets */; };
 		3A34A0AE24C78D6C001DA955 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3A34A0AC24C78D6C001DA955 /* LaunchScreen.storyboard */; };
@@ -44,7 +44,7 @@
 		3A34A09E24C78D6B001DA955 /* HeatMapInterpolation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HeatMapInterpolation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A34A0A124C78D6B001DA955 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		3A34A0A324C78D6B001DA955 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
-		3A34A0A524C78D6B001DA955 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		3A34A0A524C78D6B001DA955 /* HeatMapInterpolationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeatMapInterpolationViewController.swift; sourceTree = "<group>"; };
 		3A34A0A824C78D6B001DA955 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		3A34A0AA24C78D6C001DA955 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3A34A0AD24C78D6C001DA955 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -120,7 +120,7 @@
 			children = (
 				3A34A0A124C78D6B001DA955 /* AppDelegate.swift */,
 				3A34A0A324C78D6B001DA955 /* SceneDelegate.swift */,
-				3A34A0A524C78D6B001DA955 /* ViewController.swift */,
+				3A34A0A524C78D6B001DA955 /* HeatMapInterpolationViewController.swift */,
 				3A140AE424C7906A00F2CB74 /* HeatMapInterpolationPoints.swift */,
 				3A140AE624C7922300F2CB74 /* dataset.json */,
 				3A34A0A724C78D6B001DA955 /* Main.storyboard */,
@@ -334,7 +334,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3A34A0A624C78D6B001DA955 /* ViewController.swift in Sources */,
+				3A34A0A624C78D6B001DA955 /* HeatMapInterpolationViewController.swift in Sources */,
 				3A140AE524C7906A00F2CB74 /* HeatMapInterpolationPoints.swift in Sources */,
 				3A34A0A224C78D6B001DA955 /* AppDelegate.swift in Sources */,
 				3A34A0A424C78D6B001DA955 /* SceneDelegate.swift in Sources */,
