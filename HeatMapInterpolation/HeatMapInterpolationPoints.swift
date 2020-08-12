@@ -21,54 +21,56 @@ import GoogleMapsUtils
 /// This class will create artificial points in surrounding locations with appropriate intensities interpolated by neighboring intensity values.
 class HeatMapInterpolationPoints {
     
-    /// The input data set; each entry contains the coordinates and the 
-    private var data = [[Double]]()
+    /// The input data set
+    private var data = [GMUWeightedLatLng]()
     
+    /// The heat map layer
     private let heatMapLayer: GMUHeatmapTileLayer = GMUHeatmapTileLayer()
     
-    /// Takes in the data set file and calculates the weights of the given points; these values are used for interpolation later
+    /// The heat map colors and gradient
+    private var gradientColors = [UIColor.green, UIColor.red]
+    private var gradientStartPoints = [0.005, 0.7] as [NSNumber]
+    
+    /// The list of interpolated heat map points with weight
+    private var heatMapPoints = [GMUWeightedLatLng]()
+    
+    /// Indicates the number of times k-means clustering should execute; will be set in the constructor to 25 by default
+    private var clusterIterations: Int!
+    
+    /// Normalizing factors to convert from 2D to longitude and latitude
+    private let normalLat = 175.9783070993
+    private let normalLong = 180.0
+    
+    
+    /// The constructor to the class
     ///
-    /// - Parameter file: The input data set file; it must have a json extension.
-    public func setData(file: String) {
-        data.removeAll()
-        do {
-            guard let path = Bundle.main.url(forResource: file, withExtension: "json") else {
-                print("Data set path error")
-                return
-            }
-            let data = try Data(contentsOf: path)
-            let json = try JSONSerialization.jsonObject(with: data, options: [])
-            guard let object = json as? [[String: Any]] else {
-                print("Could not read the JSON file or file is empty")
-                return
-            }
-            for item in object {
-                let lat: Double = item["lat"] as? CLLocationDegrees ?? 0.0
-                let lng: Double = item["lng"] as? CLLocationDegrees ?? 0.0
-                append(lat: lat, long: lng)
-            }
-        } catch {
-            print(error.localizedDescription)
-        }
+    /// - Parameter givenClusterIterations: The number of iterations k-means clustering should go to.
+    init(givenClusterIterations: Int = 25) {
+        clusterIterations = givenClusterIterations
     }
     
-    /// A helper function that adds a given set of coordinates to the list of points or increments an existing coordinate
+    // MARK: Functions that parse given data needed to build an interpolated heat map from
+    
+    /// Adds a list of GMUWeightedLatLng objects to the input data set
     ///
-    /// - Parameters:
-    ///   - lat: The latitude value of the new point.
-    ///   - long: The longitude value of the new point.
-    private func append(lat: Double, long: Double) {
-        var index = 0
-        for key in data {
-            if key[0] == lat && key[1] == long {
-                data[index][2] += 1
-                return
-            }
-            index += 1
-        }
-        let temp = [lat, long, 1]
-        data.append(temp)
+    /// - Parameter latlngs: The list of GMUWeightedLatLng objects to add.
+    public func addWeightedLatLngs(latlngs: [GMUWeightedLatLng]) {
+        data.append(contentsOf: latlngs)
     }
+    
+    /// Adds a single GMUWeightedLatLng object to the input data set
+    ///
+    /// - Parameter latlngs: The list of GMUWeightedLatLng objects to add.
+    public func addWeightedLatLng(latlng: GMUWeightedLatLng) {
+        data.append(latlng)
+    }
+    
+    /// Removes all previously supplied GMUWeightedLatLng objects
+    public func removeAllData() {
+        data.removeAll()
+    }
+    
+    // MARK: Functions that directly contribute to the creation of interpolated points
         
     /// A helper function that calculates the straight-line distance between two coordinates
     ///
@@ -82,7 +84,7 @@ class HeatMapInterpolationPoints {
         return sqrt(pow(abs(lat2 - lat1), 2) + pow(abs(long2 - long1), 2))
     }
     
-    /// A helper function that utilizes the k-cluster algorihtm to cluster the input data points together into reasonable sets; the number of
+    /// A helper function that utilizes the k-cluster algorithm to cluster the input data points together into reasonable sets; the number of
     /// clusters is set so that the maximum distance between the center and any point is less than a set constant value
     ///
     /// - Returns: A list of clusters, each of which is a list of CLLocationCoordinate2D objects.
@@ -95,7 +97,7 @@ class HeatMapInterpolationPoints {
         
         // Try to make as few clusters as possible; start with 1 and increment as needed
         var numClusters = 1
-        if (data[0].count > 0) {
+        if (data.count > 0) {
             
             // We need to keep on finding clusters until the maximum distance between the center
             // and any point in its cluster is under a specific preset value
@@ -104,8 +106,8 @@ class HeatMapInterpolationPoints {
                 // Set the first numClusters values in data set to be the initial cluster centers
                 for i in 0...numClusters - 1 {
                     centers.append(CLLocationCoordinate2D(
-                        latitude: data[i][0],
-                        longitude: data[i][1])
+                        latitude: data[i].point().y * normalLat,
+                        longitude: data[i].point().x * normalLong)
                     )
                     let tempArray = [CLLocationCoordinate2D]()
                     clusters.append(tempArray)
@@ -124,27 +126,28 @@ class HeatMapInterpolationPoints {
                     // Finds the appropriate cluster for each data point
                     for point in data {
                         var minDistance: Double = distance(
-                            lat1: point[0],
-                            long1: point[1],
+                            lat1: point.point().y * normalLat,
+                            long1: point.point().x * normalLong,
                             lat2: centers[0].latitude,
                             long2: centers[0].longitude
                         )
                         var index = 0
                         for i in 0...centers.endIndex - 1 {
                             let tempDistance: Double = distance(
-                                lat1: point[0],
-                                long1: point[1],
+                                lat1: point.point().y * normalLat,
+                                long1: point.point().x * normalLong,
                                 lat2: centers[i].latitude,
                                 long2: centers[i].longitude
                             )
-                            if (minDistance > tempDistance) {
+                            if minDistance > tempDistance {
                                 minDistance = tempDistance
                                 index = i
                             }
                         }
                         clusters[index].append(CLLocationCoordinate2D(
-                            latitude: point[0],
-                            longitude: point[1])
+                            latitude: point.point().y * normalLat,
+                            longitude: point.point().x * normalLong
+                            )
                         )
                     }
                     
@@ -214,14 +217,14 @@ class HeatMapInterpolationPoints {
             let dist = self.distance(
                 lat1: lat,
                 long1: long,
-                lat2: point[0],
-                long2: point[1]
+                lat2: point.point().y * normalLat,
+                long2: point.point().x * normalLong
             )
             let distanceWeight = pow(dist, Double(n))
             if distanceWeight == 0 {
                 continue
             }
-            numerator += (point[2] / distanceWeight)
+            numerator += (Double(point.intensity) / distanceWeight)
             denominator += (1 / distanceWeight)
         }
         return [numerator, denominator]
@@ -230,7 +233,9 @@ class HeatMapInterpolationPoints {
     /// A helper function that finds the minimum and maximum longitude and latitude values that still contains a powerful enough
     /// intensity that it should be included in the data set
     ///
-    /// - Parameter input: A list of points that are in a cluster.
+    /// - Parameters:
+    ///     - input: A list of points that are in a cluster.
+    ///     - n: The power value that determines the dropoff rate of intensities with respect to the distance from given points
     /// - Returns: A list of four integers representing the minimum and maximum longitude and latitude values
     private func findBounds(input: [CLLocationCoordinate2D], n: Double) -> [Int] {
         
@@ -243,16 +248,14 @@ class HeatMapInterpolationPoints {
             ans[2] = max(ans[2], Int(coord.latitude * 10))
             ans[3] = max(ans[3], Int(coord.longitude * 10))
         }
-        
         // A copy of the answer array is needed since the answer array is directly altered in the
         // following while loops; the original values need to be retained to calculate
         let copy = ans
-        
         // The following while statements find the maximum and minimum lat/long values where the
         // points are intense enough to be placed in the heat map's data set
         
         // Finds the minimum latitude
-        while (ans[0] > -900) {
+        /*while (ans[0] > -900) {
             let intensity = findIntensity(
                 lat: Double(ans[0]) / 10,
                 long: Double((ans[3] + ans[1]) / 2) / 10,
@@ -263,22 +266,24 @@ class HeatMapInterpolationPoints {
             }
             ans[0] -= 1
         }
-        
+        print("---------------------")
         // Finds the minimum longitude
-        while (ans[1] > -900) {
+        while (ans[1] > -1800) {
             let intensity = findIntensity(
                 lat: Double((copy[2] + copy[0]) / 2) / 10,
                 long: Double(ans[1]) / 10,
                 n: n
             )
+            print(intensity[0])
             if intensity[1] == 0 || intensity[0] < 4 {
                 break
             }
             ans[1] -= 1
         }
+        print("---------------------")
         
         // Finds the maximum latitude
-        while (ans[2] < 1800) {
+        while (ans[2] < 900) {
             let intensity = findIntensity(
                 lat: Double(ans[2]) / 10,
                 long: Double((copy[3] + copy[1]) / 2) / 10,
@@ -297,11 +302,11 @@ class HeatMapInterpolationPoints {
                 long: Double(ans[3]) / 10,
                 n: n
             )
-            if intensity[1] == 0 || intensity[0] < 2 {
+            if intensity[1] == 0 || intensity[0] < 4 {
                 break
             }
             ans[3] += 1
-        }
+        }*/
         return ans
     }
     
@@ -311,30 +316,34 @@ class HeatMapInterpolationPoints {
     /// - Parameters:
     ///   - mapView: The map that we want to display the heat maps on.
     ///   - n: The n-value, determining the range of influence the intensities found in the given data set has.
-    public func generateHeatMaps(mapView: GMSMapView, n: Double) {
+    public func generateHeatMaps(mapView: GMSMapView, n: Double) -> [GMUWeightedLatLng] {
+        
+        // It doesn't make too much sense to do interpolation on an n-value of less than 2 or
+        // greater than 2.5; when n is higher, the denominator increases quicker, meaning the
+        // overall value falls quicker as the distances increase, implying that a low n value will
+        // query far too many points
+        if n < 2 || n > 2.5 {
+            return []
+        }
+        heatMapPoints.removeAll()
         heatMapLayer.map = nil
         
         // Clusters is the list of clusters that we intend to return
         let clusters = kcluster()
-        var heatMapPoints = [GMUWeightedLatLng]()
-        let gradientColors = [UIColor.green, UIColor.red]
-        let gradientStartheatMapPoints = [NSNumber(0.2), NSNumber(1.0)]
-
         for cluster in clusters {
             let bounds = findBounds(input: cluster, n: n)
-
             // A small n-value implies a large range of points that could be potentially be
             // affected, so it makes sense to increase the stride to improve runtime and the range
             // to improve the quality of the heat map
-            let step = 3
+            let step = 2
             
             // Search all the points between the bounds of the cluster; the offset indicates how
             // far beyond the bounds we want to query
-            for i in stride(from: bounds[0], to: bounds[2], by: step) {
+            for i in stride(from: bounds[0] - 150, to: bounds[2] + 150, by: step) {
                 if i > 900 || i < -900 {
                     break
                 }
-                for j in stride(from: bounds[1], to: bounds[3], by: step) {
+                for j in stride(from: bounds[1] - 200, to: bounds[3] + 200, by: step) {
                     if j > 1800 || j < -1800 {
                         break
                     }
@@ -351,7 +360,6 @@ class HeatMapInterpolationPoints {
                     if intensity[1] == 0 || intensity[0] < 3 {
                         continue
                     }
-                    
                     // Set the intensity based on IDW
                     let coords = GMUWeightedLatLng(
                         coordinate: CLLocationCoordinate2DMake(Double(i) / 10, Double(j) / 10),
@@ -364,9 +372,10 @@ class HeatMapInterpolationPoints {
         heatMapLayer.weightedData = heatMapPoints
         heatMapLayer.gradient = GMUGradient(
             colors: gradientColors,
-            startPoints: gradientStartheatMapPoints,
+            startPoints: gradientStartPoints,
             colorMapSize: 256
         )
         heatMapLayer.map = mapView
+        return heatMapPoints
     }
 }

@@ -74,9 +74,9 @@ class ViewController: UIViewController {
                 marker.position = CLLocationCoordinate2D(latitude: lat, longitude: lng)
                 markers.append(marker)
             }
-            for marker in markers {
+            /*for marker in markers {
                 marker.map = mapView
-            }
+            }*/
         } catch {
             print(error.localizedDescription)
         }
@@ -91,10 +91,17 @@ class ViewController: UIViewController {
     }
 
     private func executeHeatMap(nVal: Float) {
-        interpolationController.setData(file: "dataset")
+        var temp = [GMUWeightedLatLng]()
+        interpolationController.removeAllData()
+        let newGMU = GMUWeightedLatLng(coordinate: CLLocationCoordinate2D(latitude: -20.86 , longitude: 145.20), intensity: 500)
+        let newGMU2 = GMUWeightedLatLng(coordinate: CLLocationCoordinate2D(latitude: -20.85, longitude: 145.20), intensity: 20)
+        let newGMU3 = GMUWeightedLatLng(coordinate: CLLocationCoordinate2D(latitude: -32, longitude: 145.20), intensity: 500)
+        interpolationController.addWeightedLatLng(latlng: newGMU)
+        interpolationController.addWeightedLatLng(latlng: newGMU2)
+        interpolationController.addWeightedLatLng(latlng: newGMU3)
         heatMapPoints.removeAll()
-        heatMapLayer.weightedData = heatMapPoints
-        heatMapLayer.map = nil
+        heatMapLayer.weightedData = temp
+        heatMapLayer.map = mapView
         for point in data {
             let coords = GMUWeightedLatLng(
                 coordinate: CLLocationCoordinate2DMake(point[0], point[1]),
