@@ -26,11 +26,14 @@ class HeatMapInterpolationViewController: UIViewController {
     private var markers = [GMSMarker]()
     private var rendering = false
     private let interpolationController = HeatMapInterpolationPoints()
+    private var heatmapLayer: GMUHeatmapTileLayer!
+    private var gradientColors = [UIColor.green, UIColor.red]
+    private var gradientStartPoints = [0.2, 1.0] as? [NSNumber]
 
     /// Two render buttons for the user to click
     @IBOutlet weak var renderButton: UIButton!
     @IBOutlet weak var defaultRender: UIButton!
-    
+
     /// The alert that pops up when the user wants to manually input a power value
     private let alert = UIAlertController(
         title: "Render",
@@ -50,17 +53,23 @@ class HeatMapInterpolationViewController: UIViewController {
             textField.text = ""
         }
         alert.addAction(UIAlertAction(title: "Ok", style: .default, handler: { [weak alert] (_) in
-            
+
             // Force unwrapping is okay here because there has to be a text field (created above)
             self.executeHeatMap(nVal: Float(alert?.textFields![0].text ?? "0.0") ?? 0.0)
         }))
+        heatmapLayer = GMUHeatmapTileLayer()
+        heatmapLayer.gradient = GMUGradient(colors: gradientColors,
+                                            startPoints: gradientStartPoints!,
+                                            colorMapSize: 256
+        )
+
     }
-    
+
     /// Presents a pop up which takes in a number as the power value
     @IBAction func startRender(_ sender: Any) {
         self.present(alert, animated: true, completion: nil)
     }
-    
+
     /// Starts a render on the default power value of 2.5
     @IBAction func startDefaultRender(_ sender: Any) {
         executeHeatMap(nVal: 2.5)
@@ -70,10 +79,10 @@ class HeatMapInterpolationViewController: UIViewController {
     ///
     /// - Parameter nVal: The power value that determines how far each given point influences.
     private func executeHeatMap(nVal: Float) {
-        
+
         // It is vital to remove all prevously appended data points before creating a new heat map
         interpolationController.removeAllData()
-        
+
         // Adds points via the singular addWeightedLatLng function; intensity is initially set to
         // 100 as a showcase
         let newGMU = GMUWeightedLatLng(
@@ -91,22 +100,27 @@ class HeatMapInterpolationViewController: UIViewController {
         )
         let newGMU3 = GMUWeightedLatLng(
             coordinate: CLLocationCoordinate2D(latitude: -32, longitude: 145.20),
+            intensity: 300
+        )
+        let newGMU4 = GMUWeightedLatLng(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: -145.20),
             intensity: 100
         )
         listOfPoints.append(newGMU2)
         listOfPoints.append(newGMU3)
+        listOfPoints.append(newGMU4)
         interpolationController.addWeightedLatLngs(latlngs: listOfPoints)
-        
-        // The variable generatedPoints contains the list of interpolated points, a by-product of
-        // the generateHeatMaps function (the function's main purpose is to place an interpolated
-        // heat map on the given mapView)
-        let generatedPoints = interpolationController.generateHeatMaps(
-            mapView: mapView,
-            n: Double(nVal)
-        )
-        
-        // If you wish, uncomment the line below to seegenerated points from the interpolation
+
+        // The variable generatedPoints contains the list of interpolated points
+        let generatedPoints = interpolationController.generateHeatMaps(n: Double(nVal))
+
+        // If you wish, uncomment the line below to see generated points from the interpolation
         // print(generatedPoints)
+        
+        heatmapLayer.map = nil
+        
+        heatmapLayer.weightedData = generatedPoints
+        heatmapLayer.map = mapView
     }
 }
 
