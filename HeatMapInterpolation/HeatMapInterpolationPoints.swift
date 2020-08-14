@@ -13,10 +13,23 @@
 * limitations under the License.
 */
 
-import Foundation
-import GooglePlaces
-import GoogleMaps
 import GoogleMapsUtils
+
+/// A simple fraction class; the main use case is for finding intensity values, which are represented as fractions
+struct Fraction {
+    public let numerator: Double
+    public let denominator: Double
+    
+    /// Constructor to set the values of the numerator and denominator
+    ///
+    /// - Parameters:
+    ///   - num: The numerator.
+    ///   - denom: The denominator.
+    init(num: Double, denom: Double) {
+        numerator = num
+        denominator = denom
+    }
+}
 
 /// This class will create artificial points in surrounding locations with appropriate intensities interpolated by neighboring intensity values.
 /// The algorithm used for this class is heavily inspired by inverse distance weights to figure out intensities and k-means clustering to
@@ -55,7 +68,7 @@ class HeatMapInterpolationPoints {
     private let maxLat = 90
     private let minLong = -180
     private let maxLong = 180
-    
+        
     /// The constructor to this class
     ///
     /// - Parameter givenClusterIterations: The number of iterations k-means clustering should go to.
@@ -94,12 +107,10 @@ class HeatMapInterpolationPoints {
     /// A helper function that calculates the straight-line distance between two coordinates
     ///
     /// - Parameters:
-    ///   - lat1: The latitude value of the first point.
-    ///   - long1: The longitude value of the second point.
-    ///   - lat2: The latitude value of the second point.
-    ///   - long2: The longitude value of the second point.
+    ///   - point1: The point that we want to find the distance from.
+    ///   - point2: The point that we want to find the distance to.
     /// - Returns: A double value representing the distance between the given points.
-    private func distance(lat1: Double, long1: Double, lat2: Double, long2: Double) -> Double {
+    private func distance(point1: CLLocationCoordinate2D, point2: CLLocationCoordinate2D) -> Double {
         
         // The GMSGeometryDistance function returns the distance between two coordinates in meters;
         // according to this source, https://en.wikipedia.org/wiki/Decimal_degrees, conversion from
@@ -108,10 +119,7 @@ class HeatMapInterpolationPoints {
         // and the normalizingFactor was found accordingly, which is pretty similar to the number
         // found in the source.
         let normalizingFactor = 111195.0837241998
-        return GMSGeometryDistance(
-            CLLocationCoordinate2D(latitude: lat1, longitude: long1),
-            CLLocationCoordinate2D(latitude: lat2, longitude: long2)
-        ) / normalizingFactor
+        return GMSGeometryDistance(point1, point2) / normalizingFactor
     }
     
     /// Finds the average latitude and longitude values; see http://mathforum.org/library/drmath/view/63491.html
@@ -145,6 +153,7 @@ class HeatMapInterpolationPoints {
     ///
     /// - Returns: A list of clusters, each of which is a list of CLLocationCoordinate2D objects.
     private func kcluster() -> [[CLLocationCoordinate2D]] {
+        let converter = GMSMapView().projection
         
         // Centers contain double values representing the center of their respective clusters found
         // in the clusters list
@@ -162,6 +171,7 @@ class HeatMapInterpolationPoints {
                 
                 // Set the first numClusters values in data set to be the initial cluster centers
                 for i in 0...numClusters - 1 {
+                    
                     centers.append(CLLocationCoordinate2D(
                         latitude: data[i].point().y * normalLat,
                         longitude: data[i].point().x * normalLong)
@@ -171,8 +181,8 @@ class HeatMapInterpolationPoints {
                 }
                 
                 // 25 iterations of updating the center and recalculating the points in that cluster
-                // should be adequate, as k-means clustering has diminishing returns as the number of
-                // iterations increases
+                // should be adequate, as k-means clustering has diminishing returns as the number
+                // of iterations increases
                 for _ in 0...clusterIterations {
                     
                     // Reset the clusters so that it can be updated
@@ -182,30 +192,27 @@ class HeatMapInterpolationPoints {
                     
                     // Finds the appropriate cluster for each data point
                     for point in data {
-                        var minDistance: Double = distance(
-                            lat1: point.point().y * normalLat,
-                            long1: point.point().x * normalLong,
-                            lat2: centers[0].latitude,
-                            long2: centers[0].longitude
+                        var end = CLLocationCoordinate2D(
+                            latitude: centers[0].latitude,
+                            longitude: centers[0].longitude
                         )
+                        let normalizedPoint = converter.coordinate(for:
+                            CGPoint(x: point.point().x, y: point.point().y)
+                        )
+                        var minDistance: Double = distance(point1: normalizedPoint, point2: end)
                         var index = 0
                         for i in 0...centers.count - 1 {
-                            let tempDistance: Double = distance(
-                                lat1: point.point().y * normalLat,
-                                long1: point.point().x * normalLong,
-                                lat2: centers[i].latitude,
-                                long2: centers[i].longitude
+                            end = CLLocationCoordinate2D(
+                                latitude: centers[i].latitude,
+                                longitude: centers[i].longitude
                             )
+                            let tempDistance: Double = distance(point1: normalizedPoint, point2: end)
                             if minDistance >= tempDistance {
                                 minDistance = tempDistance
                                 index = i
                             }
                         }
-                        clusters[index].append(CLLocationCoordinate2D(
-                            latitude: point.point().y * normalLat,
-                            longitude: point.point().x * normalLong
-                            )
-                        )
+                        clusters[index].append(normalizedPoint)
                     }
                     
                     // Update the center values to reflect new cluster points
@@ -219,12 +226,15 @@ class HeatMapInterpolationPoints {
                 var breaker = false
                 for i in 0...numClusters - 1 {
                     for coord in clusters[i] {
-                        let radius = distance(
-                            lat1: centers[i].latitude,
-                            long1: centers[i].longitude,
-                            lat2: coord.latitude,
-                            long2: coord.longitude
+                        let start = CLLocationCoordinate2D(
+                            latitude: centers[i].latitude,
+                            longitude: centers[i].longitude
                         )
+                        let end = CLLocationCoordinate2D(
+                            latitude: coord.latitude,
+                            longitude: coord.longitude
+                        )
+                        let radius = distance(point1: start, point2: end)
                         
                         // This is a set bound for the radius of each cluster; radius is defined
                         // here as the distance from a point in the cluster to the cluster center.
@@ -264,24 +274,22 @@ class HeatMapInterpolationPoints {
         lat: Double,
         long: Double,
         influence: HeatmapInterpolationInfluence
-    ) -> [Double] {
+    ) -> Fraction {
         var numerator: Double = 0
         var denominator: Double = 0
-        for point in self.data {
-            let dist = self.distance(
-                lat1: lat,
-                long1: long,
-                lat2: point.point().y * normalLat,
-                long2: point.point().x * normalLong
-            )
+        for point in data {
+            let start = CLLocationCoordinate2D(latitude: lat, longitude: long)
+            let end = CLLocationCoordinate2D(latitude: point.point().y * normalLat, longitude: point.point().x * normalLong)
+            let dist = distance(point1: start, point2: end)
             let distanceWeight = pow(dist, influence)
+            
             if distanceWeight == 0 {
                 continue
             }
             numerator += (Double(point.intensity) / distanceWeight)
             denominator += (1 / distanceWeight)
         }
-        return [numerator, denominator]
+        return Fraction(num: numerator, denom: denominator)
     }
     
     /// A helper function that finds the minimum and maximum longitude and latitude values that still contains a powerful enough
@@ -379,7 +387,7 @@ class HeatMapInterpolationPoints {
                     
                     // If the numerator value is too small, that point is worthless as it is too
                     // far away or too weak; if the denominator is 0, we get a divide by 0 error
-                    if intensity[1] == 0 || intensity[0] < 3 {
+                    if intensity.denominator == 0 || intensity.numerator < 3 {
                         continue
                     }
                     
@@ -389,7 +397,7 @@ class HeatMapInterpolationPoints {
                             Double(i) * granularity,
                             Double(j) * granularity
                         ),
-                        intensity: Float(intensity[0] / intensity[1])
+                        intensity: Float(intensity.numerator / intensity.denominator)
                     )
                     heatMapPoints.append(coords)
                 }
