@@ -192,27 +192,28 @@ class HeatMapInterpolationPoints {
                     
                     // Finds the appropriate cluster for each data point
                     for point in data {
+                        let start = CLLocationCoordinate2D(
+                            latitude: point.point().y * normalLat,
+                            longitude: point.point().x * normalLong
+                        )
                         var end = CLLocationCoordinate2D(
                             latitude: centers[0].latitude,
                             longitude: centers[0].longitude
                         )
-                        let normalizedPoint = converter.coordinate(for:
-                            CGPoint(x: point.point().x, y: point.point().y)
-                        )
-                        var minDistance: Double = distance(point1: normalizedPoint, point2: end)
+                        var minDistance: Double = distance(point1: start, point2: end)
                         var index = 0
                         for i in 0...centers.count - 1 {
                             end = CLLocationCoordinate2D(
                                 latitude: centers[i].latitude,
                                 longitude: centers[i].longitude
                             )
-                            let tempDistance: Double = distance(point1: normalizedPoint, point2: end)
+                            let tempDistance: Double = distance(point1: start, point2: end)
                             if minDistance >= tempDistance {
                                 minDistance = tempDistance
                                 index = i
                             }
                         }
-                        clusters[index].append(normalizedPoint)
+                        clusters[index].append(start)
                     }
                     
                     // Update the center values to reflect new cluster points
@@ -279,7 +280,10 @@ class HeatMapInterpolationPoints {
         var denominator: Double = 0
         for point in data {
             let start = CLLocationCoordinate2D(latitude: lat, longitude: long)
-            let end = CLLocationCoordinate2D(latitude: point.point().y * normalLat, longitude: point.point().x * normalLong)
+            let end = CLLocationCoordinate2D(
+                latitude: point.point().y * normalLat,
+                longitude: point.point().x * normalLong
+            )
             let dist = distance(point1: start, point2: end)
             let distanceWeight = pow(dist, influence)
             
@@ -384,7 +388,6 @@ class HeatMapInterpolationPoints {
                         long: Double(j) * granularity,
                         influence: influence
                     )
-                    
                     // If the numerator value is too small, that point is worthless as it is too
                     // far away or too weak; if the denominator is 0, we get a divide by 0 error
                     if intensity.denominator == 0 || intensity.numerator < 3 {
